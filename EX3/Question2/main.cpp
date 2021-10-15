@@ -1,13 +1,15 @@
 #include <avr/io.h>
 #include <avr/delay.h>
 
+int get_digit(int number , int timer0status);
+void enable_display(int timer0status);
 void display7seg(int num);
 
 int main() {
     DDRD = 0xFF;
     DDRC = 0xFF;
 
-    PORTC = 0x00;
+    PORTC = 0xFF;
     PORTD = 0x00;
 
     TCCR1B = (1 << CS12);
@@ -16,19 +18,54 @@ int main() {
     TCNT0 = 0;
 
     int number = 0;
+    int digit = 0;
+    int timer0Status = 0;
     display7seg(number);
 
     while (1) {
-       PORTC = 1 << (TCNT0 % 4); 
-       if(TCNT1 > 5000 && number < 9){
+       timer0Status = TCNT0 % 4;
+       digit = get_digit(number , timer0Status);
+
+       enable_display(timer0Status);
+       display7seg(digit);
+
+       if(TCNT1 > 2000 && number <= 9999){
             TCNT1 = 0;
             number = number + 1; 
-            display7seg(number);   
         }
+           
     }
     return 0;
 }
+int get_digit(int number , int timer0status){
+    int result = number;
 
+    if(timer0status == 0) return result % 10;
+    else if(timer0status == 1) return (result / 10) %10;
+    else if(timer0status == 2) return (result / 100) %10;
+    else return ( result / 1000 ) %10;
+}
+void enable_display(int timer0status){
+    switch (timer0status)
+    {
+    case 3:
+        PORTC = 0x0E;
+        break;
+    case 2:
+        PORTC = 0x0D;
+        break;    
+    case 1:
+        PORTC = 0x0B;
+        break;
+    case 0:
+        PORTC = 0x07;
+        break;
+
+    default:
+        PORTC = 0x00;
+        break;
+    }
+}
 void display7seg(int num){
     switch (num)
     {
