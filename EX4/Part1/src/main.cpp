@@ -11,7 +11,7 @@ int main() {
 
     _delay_ms(10);
 
-	LCD_cmd(0x0E);          // display on, cursor off
+	LCD_cmd(0x0E);          // display on, cursor blinking
 
 	_delay_ms(10);
 	
