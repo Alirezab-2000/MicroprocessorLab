@@ -4,53 +4,46 @@
 unsigned int overflow_cout = 0;
 unsigned int step = 0;
 
-void step_setter(int step){
-    int mode = step % 8;
-
-    switch (mode)
+void step_setter()
+{
+    switch (step)
     {
-    case 0:
-        PORTA = 0b010;
-        break;
     case 1:
-        PORTA = 0b0110;
-        break;
-    case 2:
         PORTA = 0b0100;
         break;
-    case 3:
-        PORTA = 0b0101;
-        break;
-    case 4:
+    case 2:
         PORTA = 0b1101;
         break;
-    case 5:
-        PORTA = 0b1001;
-        break;
-    case 6:
+    case 3:
         PORTA = 0b1011;
         break;
-    case 7:
-        PORTA = 0b1010;
-        break; 
+    case 4:
+        PORTA = 0b0010;
+        step = 0;
+        break;
     default:
         PORTA = 0b0000;
         break;
     }
 }
 
-ISR(TIMER0_OVF_vect){
-    if(PINC != 0x04){
-        if(overflow_cout % 390 == 0){
-            // the Clock is 1MHz and, 390 timer0 overflow with clock prescaler cause 100ms delay
-            step_setter(step);
+ISR(TIMER0_OVF_vect)
+{
+    overflow_cout++;
+    TCNT0 = 5;
 
+    if (overflow_cout == 500)
+    {
+        if (PINC != 0x04)
+        {
+            step_setter();
             step++;
         }
+        overflow_cout = 0;
     }
-    overflow_cout++;
 }
-int main() {
+int main()
+{
     DDRC = 0x00;
     DDRA = 0x0F;
 
@@ -58,11 +51,11 @@ int main() {
 
     TCCR0 = (1 << CS00);
     TIMSK |= (1 << TOIE0);
-  
+
     sei();
- 
-    while (1) {
-        
+
+    while (1)
+    {
     }
     return 0;
 }
