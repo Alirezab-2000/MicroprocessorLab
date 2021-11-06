@@ -6,7 +6,7 @@
 
 uint16_t adc_result0;
 
-unsigned int motor_start_temp = 50;
+unsigned int motor_start_temp = 20;
 unsigned int hysteresis_bound = 10;
 unsigned int motor_step = 0;
 unsigned int overflow_count = 0;
