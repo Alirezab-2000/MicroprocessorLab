@@ -10,15 +10,14 @@ char temp_fahrenheit_str[20] = "";
 
 uint16_t adc_read(uint8_t ch)
 {
-    // select the corresponding channel 0~7
-    ch &= 0b00000111;            // AND operation with 7
-    ADMUX = (ADMUX & 0xF8) | ch; 
-    // write '1' to ADSC
-    ADCSRA |= (1 << ADSC);
-    // wait for conversion to complete
-    while (ADCSRA & (1 << ADSC))
-        ;
-    return (ADC);
+    ch &= 0b00000111;            
+    ADMUX = (ADMUX & 0xF8) | ch; //chooose channel
+
+    ADCSRA |= (1 << ADSC); // start conversation
+    
+    while (ADCSRA & (1 << ADSC)); // wait for conversion to complete
+    
+    return (ADC); // read ADCL and ADCW
 }
 
 int main()
@@ -33,7 +32,7 @@ int main()
     LCD_cmd(0x0C);
 
     ADMUX = (1 << REFS0);
-    ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+    ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1); // pre scaler 64 and adc enable
 
     uint16_t current_adc_result0 = adc_read(0) + 1;
 
