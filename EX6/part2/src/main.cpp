@@ -130,7 +130,7 @@ int main()
 
     sei();
 
-    uint16_t current_adc_result0 =  adc_read(0) + 1;
+    uint16_t current_adc_result0 = -1;
 
     while (1)
     {
