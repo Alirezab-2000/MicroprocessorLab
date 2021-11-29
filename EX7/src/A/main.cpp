@@ -28,7 +28,7 @@ struct User
     char id[20];
     char password[20];
 };
-User users[max_user] = {{"1", "1"}};
+User users[max_user] = {{"1", "2"}};
 
 int state = 0;
 
@@ -38,8 +38,10 @@ void login_page();
 void menu_page();
 void get_info_page();
 void date_setting_page();
-void user_setting_page();
+void add_user_page();
+void logout();
 
+void add_user(char *id, char *pass);
 char *input(int line);
 
 int main()
@@ -93,21 +95,22 @@ char *input(int line)
         {
             return lcdInput;
         }
-        // if (strcmp(key, "*") == 0)
-        // {
-        //     state = state / 10;
-        // }
         LCD_Write_String(key);
         sprintf(lcdInput, "%s%s", lcdInput, key);
     }
 }
 void login_page()
 {
+    char id[20] = "";
+    char password[20] = "";
+
     LCD_Clear();
     LCD_Write_String("Enter your id:");
-    char *id = input(line2);
+    char *id_scaned = input(line2);
+    sprintf(id, "%s", id_scaned);
     LCD_Write_Line(line3, "Enter your password:");
-    char *password = input(line4);
+    char *password_scaned = input(line4);
+    sprintf(password, "%s", password_scaned);
 
     for (int i = 0; i < users_count; i++)
     {
@@ -139,34 +142,36 @@ void menu_page()
     while (menu_page_num != -1)
     {
         LCD_Clear();
-        if (menu_page_num == 0)
+
+        if (is_admin == 1)
+        {
+            if (menu_page_num == 0)
+            {
+                LCD_Write_String("1.see information");
+                LCD_Write_Line(line2, "2.rotate motor");
+                LCD_Write_Line(line3, "3.date&time setting");
+                LCD_Write_Line(line4, "use # for next page");
+            }
+            else
+            {
+                LCD_Write_String("1.Add or Edit user");
+                LCD_Write_Line(line2, "2.remove user");
+                LCD_Write_Line(line3, "3.logout");
+                LCD_Write_Line(line4, "use * for pre page");
+            }
+        }
+        else if (is_admin == 0)
         {
             LCD_Write_String("1.see information");
-            LCD_Write_Line(line2, "2.date&time setting");
-            LCD_Write_Line(line3, "3.rotate motor");
-            LCD_Write_Line(line4, "use # for next page");
-        }
-        else
-        {
-            LCD_Write_String("1.Add or Edit user");
-            LCD_Write_Line(line2, "2.remove user");
+            LCD_Write_Line(line2, "2.rotate motor");
             LCD_Write_Line(line3, "3.logout");
-            LCD_Write_Line(line4, "use * for pre page");
         }
 
         while (true)
         {
             char *key = key_scan();
-            if(strcmp(key, "#") == 0){
-                menu_page_num = 1;
-                break;
-            }
-            if(strcmp(key, "*") == 0){
-                menu_page_num = 0;
-                break;
-            }
 
-            if (menu_page_num == 0)
+            if (is_admin == 0)
             {
                 if (strcmp(key, "1") == 0)
                 {
@@ -182,32 +187,144 @@ void menu_page()
                 }
                 else if (strcmp(key, "3") == 0)
                 {
-                    state = 2;
+                    logout();
                     menu_page_num = -1;
                     break;
                 }
             }
-            else
+            else if (is_admin == 1)
             {
-                if (strcmp(key, "1") == 0)
+                if (strcmp(key, "#") == 0)
                 {
-                    state = 5;
-                    menu_page_num = -1;
+                    menu_page_num = 1;
                     break;
                 }
-                else if (strcmp(key, "2") == 0)
+                if (strcmp(key, "*") == 0)
                 {
-                    state = 6;
-                    menu_page_num = -1;
+                    menu_page_num = 0;
                     break;
                 }
-                else if (strcmp(key, "3") == 0)
+
+                if (menu_page_num == 0)
                 {
-                    state = 7;
-                    menu_page_num = -1;
-                    break;
+                    if (strcmp(key, "1") == 0)
+                    {
+                        state = 3;
+                        menu_page_num = -1;
+                        break;
+                    }
+                    else if (strcmp(key, "2") == 0)
+                    {
+                        state = 4;
+                        menu_page_num = -1;
+                        break;
+                    }
+                    else if (strcmp(key, "3") == 0)
+                    {
+                        state = 2;
+                        menu_page_num = -1;
+                        break;
+                    }
+                }
+                else
+                {
+                    if (strcmp(key, "1") == 0)
+                    {
+                        add_user_page();
+                        menu_page_num = -1;
+                        break;
+                    }
+                    else if (strcmp(key, "2") == 0)
+                    {
+                        state = 6;
+                        menu_page_num = -1;
+                        break;
+                    }
+                    else if (strcmp(key, "3") == 0)
+                    {
+                        logout();
+                        menu_page_num = -1;
+                        break;
+                    }
                 }
             }
         }
+    }
+}
+void logout()
+{
+    LCD_Timing_Write("Logged out ...");
+    is_admin = -1;
+    state = 0;
+}
+void add_user_page()
+{
+    char id[20] = "";
+    char password[20] = "";
+
+    LCD_Clear();
+    LCD_Write_String("Enter user id:");
+    char *id_scaned = input(line2);
+    sprintf(id , "%s",id_scaned);
+    LCD_Write_Line(line3, "Enter user password:");
+    char *password_scaned = input(line4);
+    sprintf(password, "%s" , password_scaned);
+    bool isEdited = false;
+
+    LCD_Clear();
+    for (int i = 0; i < users_count; i++)
+    {
+        if (strcmp(users[i].id, id) == 0)
+        {
+            strcpy(users[i].password, password);
+            isEdited = true;
+            LCD_Timing_Write("user updated ...");
+            break;
+        }
+    }
+    if (!isEdited)
+    {
+        if (users_count == max_user)
+        {
+            LCD_Clear();
+            LCD_Write_String("The ram is Full");
+            LCD_Write_Line(line2, "overwrite it?");
+            LCD_Write_Line(line3, "(1=yes/0=no)");
+            while (true)
+            {
+                char *key = key_scan();
+
+                if (strcmp(key, "1") == 0)
+                {
+                    add_user(id, password);
+                    LCD_Timing_Write("user added ...");
+                     break;
+                }
+                if (strcmp(key, "0") == 0)
+                {
+                    LCD_Timing_Write("user dont add ...");
+                     break;
+                }
+            }
+        }
+        else
+        {
+            add_user(id, password);
+            LCD_Timing_Write("user added ...");
+        }
+    }
+}
+void add_user(char *id, char *password)
+{
+    if (users_count == max_user)
+    {
+        strcpy(users[users_count - 1].id, id);
+        strcpy(users[users_count - 1].password, password);
+    }
+    else
+    {
+        strcpy(users[users_count].id, id);
+        strcpy(users[users_count].password, password);
+        users_count++;
     }
 }
