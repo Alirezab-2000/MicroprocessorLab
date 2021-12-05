@@ -11,62 +11,91 @@
 // state introduction
 // state = 0 ---> login page
 // state = 1 ---> menu page
-// state = 2 ---> stepper motor page
-// state = 3 ---> get information page
-// state = 4 ---> Date setting page
-// state = 5 ---> Add or Edit user page
-// state = 6 ---> remove user
-// state = 7 ---> logOut
+// state = 2 ---> get information page
 // }
-char lcdInput[20] = "";
+char lcdInput[10] = "";
 
-const int max_user = 2;
-int users_count = 1;
+const char max_user = 2;
+char users_count = 1;
+char timer0Amount = 6;
+short overflow_count = 0;
+char second = 0;
+char minute = 0;
+char hour = 0;
+short year = 2021;
+char month = 5;
+char day = 2;
+char temp = 25;
 
 struct User
 {
-    char id[20];
-    char password[20];
+    char id[5];
+    char password[5];
 };
 User users[max_user] = {{"1", "2"}};
 
-int state = 0;
+char state = 0;
 
-int is_admin = -1; // -1 means no admin nor user logged in
+char is_admin = -1; // -1 means no admin nor user logged in
 
 void login_page();
 void menu_page();
 void get_info_page();
 void date_setting_page();
+void remove_user_page();
 void add_user_page();
+void rotate_motor_page();
 void logout();
 
+void print_info();
+void add_time();
 void add_user(char *id, char *pass);
 char *input(int line);
 
+ISR(TIMER0_OVF_vect)
+{
+    overflow_count++;
+    TCNT0 = timer0Amount;
+    if (overflow_count == 4000)
+    {
+        overflow_count = 0;
+        add_time();
+
+        if (state == 2)
+        {
+            UDR = 0;
+            print_info();
+        }
+    }
+}
+ISR(USART_RXC_vect)
+{
+    temp = UDR;
+}
 int main()
 {
-    char *key = "";
 
+    DDRD = DDRD | 0xe0;
     DDRB = 0xFF;
-    DDRD = 0xE0;
     DDRC = 0xF8;
     DDRA = 0xFF;
+
+    UCSRB = (1 << RXCIE) | (1 << RXEN) | (1 << TXEN);
+    UBRRL = 7;
+
+    TCCR0 = (1 << CS00);
+    TIMSK = (1 << TOIE0);
+    TCNT0 = timer0Amount;
 
     keypad_init();
     init_LCD();
 
-    _delay_ms(10);
-
-    LCD_cmd(0x0E); // display on, cursor blinking
-
-    _delay_ms(10);
+    sei();
 
     LCD_Write_String("Hi.use # to submit");
-    LCD_Write_Line(line2, "use * to back");
-    _delay_ms(3000);
+    _delay_ms(2000);
 
-    while (1)
+    while (true)
     {
         switch (state)
         {
@@ -82,6 +111,25 @@ int main()
     return 0;
 }
 
+void add_time()
+{
+    second++;
+
+    if (second == 60)
+    {
+        minute++;
+        second = 0;
+    }
+    if (minute == 60)
+    {
+        hour++;
+        minute = 0;
+    }
+    if (hour == 24)
+    {
+        hour = 0;
+    }
+}
 char *input(int line)
 {
     LCD_cmd(line);
@@ -99,10 +147,100 @@ char *input(int line)
         sprintf(lcdInput, "%s%s", lcdInput, key);
     }
 }
+void print_info()
+{
+    char time[20] = "";
+    char date[20] = "";
+    char temperature[10] = "";
+
+    LCD_Clear();
+
+    sprintf(time, "Time: %d:%d:%d", hour, minute, second);
+    sprintf(date, "Date: %d/%d/%d", year, month, day);
+    sprintf(temperature, "temp: %dC", temp);
+
+    LCD_Write_String(time);
+    LCD_Write_Line(line2, date);
+    LCD_Write_Line(line3, temperature);
+    LCD_Write_Line(line4, "press * to exit");
+}
+
+void rotate_motor_page()
+{
+    LCD_Clear();
+    char steps[5] = "";
+
+    LCD_Write_String("Enter step:");
+    char *step_scanned = input(line2);
+    sprintf(steps, "%s", step_scanned);
+
+    char step_count = atoi(steps);
+    UDR = step_count;
+
+    LCD_Timing_Write("motor rotated ...");
+}
+void date_setting_page()
+{
+
+    LCD_Clear();
+
+    {
+        LCD_Write_String("Enter the year:");
+        char newYear[10] = "";
+        char *year_scanned = input(line2);
+        sprintf(newYear, "%s", year_scanned);
+        year = atoi(newYear);
+    }
+
+    {
+        char newMonth[10] = "";
+        LCD_Write_Line(line3, "Enter the month:");
+        char *month_scanned = input(line4);
+        sprintf(newMonth, "%s", month_scanned);
+        month = atoi(newMonth);
+    }
+
+    LCD_Clear();
+
+    {
+        char newDay[10] = "";
+        LCD_Write_String("Enter the day:");
+        char *day_scanned = input(line2);
+        sprintf(newDay, "%s", day_scanned);
+        day = atoi(newDay);
+    }
+    {
+        char newHour[10] = "";
+        LCD_Write_Line(line3, "Enter the hour:");
+        char *hour_scanned = input(line4);
+        sprintf(newHour, "%s", hour_scanned);
+        hour = atoi(newHour);
+    }
+    LCD_Clear();
+    {
+        char newMinute[10] = "";
+        LCD_Write_String("Enter the minute:");
+        char *minute_scanned = input(line2);
+        sprintf(newMinute, "%s", minute_scanned);
+        minute = atoi(newMinute);
+    }
+}
+void get_info_page()
+{
+    while (true)
+    {
+        char *key = key_scan();
+        if (strcmp(key, "*") == 0)
+        {
+            state = 1;
+            break;
+        }
+    }
+}
 void login_page()
 {
-    char id[20] = "";
-    char password[20] = "";
+    char id[5] = "";
+    char password[5] = "";
 
     LCD_Clear();
     LCD_Write_String("Enter your id:");
@@ -137,7 +275,7 @@ void login_page()
 }
 void menu_page()
 {
-    int menu_page_num = 0;
+    char menu_page_num = 0;
 
     while (menu_page_num != -1)
     {
@@ -175,13 +313,15 @@ void menu_page()
             {
                 if (strcmp(key, "1") == 0)
                 {
-                    state = 3;
+                    state = 2;
+                    get_info_page();
+                    state = 1;
                     menu_page_num = -1;
                     break;
                 }
                 else if (strcmp(key, "2") == 0)
                 {
-                    state = 4;
+                    rotate_motor_page();
                     menu_page_num = -1;
                     break;
                 }
@@ -209,19 +349,21 @@ void menu_page()
                 {
                     if (strcmp(key, "1") == 0)
                     {
-                        state = 3;
+                        state = 2;
+                        get_info_page();
+                        state = 1;
                         menu_page_num = -1;
                         break;
                     }
                     else if (strcmp(key, "2") == 0)
                     {
-                        state = 4;
+                        rotate_motor_page();
                         menu_page_num = -1;
                         break;
                     }
                     else if (strcmp(key, "3") == 0)
                     {
-                        state = 2;
+                        date_setting_page();
                         menu_page_num = -1;
                         break;
                     }
@@ -236,7 +378,7 @@ void menu_page()
                     }
                     else if (strcmp(key, "2") == 0)
                     {
-                        state = 6;
+                        remove_user_page();
                         menu_page_num = -1;
                         break;
                     }
@@ -259,20 +401,25 @@ void logout()
 }
 void add_user_page()
 {
-    char id[20] = "";
-    char password[20] = "";
+    char id[5] = "";
+    char password[5] = "";
 
     LCD_Clear();
-    LCD_Write_String("Enter user id:");
-    char *id_scaned = input(line2);
-    sprintf(id , "%s",id_scaned);
-    LCD_Write_Line(line3, "Enter user password:");
-    char *password_scaned = input(line4);
-    sprintf(password, "%s" , password_scaned);
+
+    {
+        LCD_Write_String("Enter user id:");
+        char *id_scaned = input(line2);
+        sprintf(id, "%s", id_scaned);
+    }
+    {
+        LCD_Write_Line(line3, "Enter user password:");
+        char *password_scaned = input(line4);
+        sprintf(password, "%s", password_scaned);
+    }
     bool isEdited = false;
 
     LCD_Clear();
-    for (int i = 0; i < users_count; i++)
+    for (char i = 0; i < users_count; i++)
     {
         if (strcmp(users[i].id, id) == 0)
         {
@@ -298,12 +445,12 @@ void add_user_page()
                 {
                     add_user(id, password);
                     LCD_Timing_Write("user added ...");
-                     break;
+                    break;
                 }
                 if (strcmp(key, "0") == 0)
                 {
                     LCD_Timing_Write("user dont add ...");
-                     break;
+                    break;
                 }
             }
         }
@@ -326,5 +473,44 @@ void add_user(char *id, char *password)
         strcpy(users[users_count].id, id);
         strcpy(users[users_count].password, password);
         users_count++;
+    }
+}
+void remove_user_page()
+{
+    char id[5] = "";
+
+    LCD_Clear();
+    {
+        LCD_Write_String("Enter user id:");
+        char *id_scaned = input(line2);
+        sprintf(id, "%s", id_scaned);
+    }
+
+    bool isEdited = false;
+
+    LCD_Clear();
+    for (char i = 0; i < users_count; i++)
+    {
+        if (strcmp(users[i].id, id) == 0)
+        {
+            users_count--;
+
+            for (char k = i; k < users_count; k++)
+            {
+                users[k] = users[k + 1];
+            }
+
+            isEdited = true;
+            break;
+        }
+    }
+
+    if (isEdited)
+    {
+        LCD_Timing_Write("user deleted ...");
+    }
+    else
+    {
+        LCD_Timing_Write("the id not valid");
     }
 }
